@@ -1,7 +1,7 @@
 {
-  "name": "tornadocash-classic-ui",
+  "name": "mishmash-ui",
   "version": "1.0.0",
-  "description": "Private ethereum transactions",
+  "description": "Private Electroneum transactions",
   "author": "MishMash.cash Team",
   "scripts": {
     "lint": "eslint --ext .js,.vue --ignore-path .gitignore .",
