@@ -53,7 +53,7 @@
                 <b-button
                   tag="a"
                   type="is-icon"
-                  href="https://github.com/mishmashcash/mishmash-ui"
+                  href="https://github.com/mishmashcash?tab=repositories"
                   target="_blank"
                   rel="noopener noreferrer"
                   icon-right="github"
