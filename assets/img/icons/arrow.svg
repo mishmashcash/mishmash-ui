@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="184"
+   height="164"
+   version="1.1"
+   id="svg3"
+   sodipodi:docname="arrow.svg"
+   inkscape:version="1.4.2 (ebf0e940d0, 2025-05-08)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs3" />
+  <sodipodi:namedview
+     id="namedview3"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="7.0365854"
+     inkscape:cx="91.948007"
+     inkscape:cy="82"
+     inkscape:window-width="3440"
+     inkscape:window-height="1355"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg3" />
+  <path
+     fill="#94FEBF"
+     fill-rule="evenodd"
+     d="M140 164H80l44-82L80 0h60l44 82-44 82z"
+     id="path1"
+     style="fill:#37eaff;fill-opacity:1" />
+  <path
+     fill="#94FEBF"
+     fill-rule="evenodd"
+     d="M70 164H30l44-82L30 0h40l44 82-44 82z"
+     opacity=".502"
+     id="path2"
+     style="fill:#37eaff;fill-opacity:1" />
+  <path
+     fill="#94FEBF"
+     fill-rule="evenodd"
+     d="M20 164H0l44-82L0 0h20l44 82-44 82z"
+     opacity=".2"
+     id="path3"
+     style="fill:#37eaff;fill-opacity:1" />
+</svg>
