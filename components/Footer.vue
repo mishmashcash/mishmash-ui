@@ -29,7 +29,7 @@
                 <!-- <b-button
                   tag="a"
                   type="is-icon"
-                  href="https://discord.com/invite/TFDrM8K42j"
+                  href="https://discord.com/"
                   target="_blank"
                   rel="noopener noreferrer"
                   icon-right="discord"
@@ -45,19 +45,19 @@
                 <!-- <b-button
                   tag="a"
                   type="is-icon"
-                  href="https://t.me/MishMashCashOfficial"
+                  href="https://t.me"
                   target="_blank"
                   rel="noopener noreferrer"
                   icon-right="telegram"
                 ></b-button> -->
-                <!-- <b-button
+                <b-button
                   tag="a"
                   type="is-icon"
-                  href="https://github.com/tornadocash"
+                  href="https://github.com/mishmashcash/mishmash-ui"
                   target="_blank"
                   rel="noopener noreferrer"
                   icon-right="github"
-                ></b-button> -->
+                ></b-button>
                 <div class="break"></div>
                 <b-dropdown
                   v-model="$i18n.locale"
