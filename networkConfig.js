@@ -25,7 +25,7 @@ export default {
       }
     },
     scriptRpcUrls: {
-      http: 'https://rpc.ankr.com/electroneum'
+      http: 'http://localhost:8545'
     },
     multicall: '0xf6bd2414715713f52C74fce8341DA12221ac7446',
     relayerRegistryContract: '0xe1a5f69B43A316a4a3430545a17782D32ad11a4b',
@@ -52,7 +52,7 @@ export default {
       GOVERNANCE_BLOCK: 8838348,
       RELAYER_REGISTRY_BLOCK: 8838355
     },
-    'mishmash-router': '0xCB6aDc219DB1948412f11E4675463c07210F5C32',
+    'mishmash-router': '0x77cfe4d6cD06C76584145B43Ca249Af6C37DBA2F',
     'governance.contract.mishmash.cash': '0xd5BCb45FBdC71Ff75C63f545567eDc5cc2721746',
     'mash.contract.mishmash.cash': '0x1b17a987eD0B5d62331841ca2C4cB6D9e1Dc385a'
   },
@@ -82,7 +82,7 @@ export default {
       }
     },
     scriptRpcUrls: {
-      http: 'https://rpc.ankr.com/electroneum_testnet'
+      http: 'http://localhost:8548'
     },
     multicall: '0xA7f3d2dEa7a53E7A9FEbBdE5Cf7C69d39D065030',
     relayerRegistryContract: '0xa40f935977531D3b611999134a10Fb945ecfAAE7',
@@ -109,7 +109,7 @@ export default {
       GOVERNANCE_BLOCK: 8325901,
       RELAYER_REGISTRY_BLOCK: 8325908
     },
-    'mishmash-router': '0x0cBcE29CBf9511B1E5859dc4CDFf062C1905Aba6',
+    'mishmash-router': '0x4c1574110E554f3199535ea22635f6A1452e9F64',
     'governance.contract.mishmash.cash': '0xC8e7F7a02328Ad9B80832B8bCE768cB08cF59Be5',
     'mash.contract.mishmash.cash': '0x2B22a75F6388383A93b0eF91D4255d4F5FC81d89'
   }

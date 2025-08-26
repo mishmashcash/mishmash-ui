@@ -654,20 +654,72 @@ const actions = {
       const netId = rootGetters['metamask/netId']
       const aggregatorContract = getters.aggregatorContract
       const govInstance = getters.govContract({ netId })
-      const config = getters.getConfig({ netId })
+      // const config = getters.getConfig({ netId })
 
       if (!govInstance) {
         return
       }
 
-      // eslint-disable-next-line standard/array-bracket-even-spacing
-      const [events, statuses] = await Promise.all([
-        govInstance.getPastEvents('ProposalCreated', {
-          fromBlock: config.constants.GOVERNANCE_BLOCK,
-          toBlock: 'latest'
-        }),
-        aggregatorContract.methods.getAllProposals(govInstance._address).call()
-      ])
+      const rpc = rootGetters['settings/currentRpc']
+      const web3 = this.$provider.getWeb3(rpc.url)
+      const currentBlockNumber = await web3.eth.getBlockNumber()
+      const currentBlock = await web3.eth.getBlock(currentBlockNumber)
+      const currentTimestamp = currentBlock.timestamp
+
+      // First get all proposals to determine efficient block ranges
+      const statuses = await aggregatorContract.methods.getAllProposals(govInstance._address).call()
+
+      // Calculate individual block ranges for each proposal
+      const blockRanges = []
+      const PROPOSAL_CREATION_OFFSET = 75 // seconds after creation when proposal starts
+      const BLOCK_TIME = 5 // seconds per block
+      const RANGE_SIZE = 1000 // blocks per range
+
+      if (statuses && statuses.length > 0) {
+        // Create a block range for each proposal, centered around its creation time
+        for (const status of statuses) {
+          const startTime = Number(status.startTime)
+          const creationTime = startTime - PROPOSAL_CREATION_OFFSET
+
+          // Calculate the block number where this proposal was likely created
+          const estimatedCreationBlock =
+            currentBlockNumber - Math.floor((currentTimestamp - creationTime) / BLOCK_TIME)
+          const creationBlock = estimatedCreationBlock < 0 ? 0 : estimatedCreationBlock
+
+          // Create a range centered around the creation block
+          const rangeStart = Math.max(0, creationBlock - Math.floor(RANGE_SIZE / 2))
+          const rangeEnd = Math.min(currentBlockNumber, rangeStart + RANGE_SIZE - 1)
+
+          blockRanges.push({ fromBlock: rangeStart, toBlock: rangeEnd })
+        }
+
+        // Keep ranges at exactly 1000 blocks, allowing overlaps
+        // We'll deduplicate events later based on transactionHash
+      }
+
+      // Fetch events using the optimized block ranges
+      let events = []
+      for (const range of blockRanges) {
+        // eslint-disable-next-line no-await-in-loop
+        const chunkEvents = await govInstance.getPastEvents('ProposalCreated', {
+          fromBlock: range.fromBlock,
+          toBlock: range.toBlock
+        })
+        events = events.concat(chunkEvents)
+      }
+
+      // Deduplicate events based on transactionHash to handle overlapping ranges
+      const uniqueEvents = []
+      const seenTxHashes = new Set()
+
+      for (const event of events) {
+        if (!seenTxHashes.has(event.transactionHash)) {
+          seenTxHashes.add(event.transactionHash)
+          uniqueEvents.push(event)
+        }
+      }
+
+      events = uniqueEvents
 
       const parseDescription = ({ id, text }) => {
         if (netId === 1) {
@@ -699,18 +751,42 @@ const actions = {
         return { title, description }
       }
 
-      proposals = events
-        .map(({ returnValues, blockNumber }, index) => {
-          const id = Number(returnValues.id)
-          const { state, startTime, endTime, forVotes, againstVotes } = statuses[index]
-          const { title, description } = parseDescription({ id, text: returnValues.description })
+      // Create a map of events by proposal ID for quick lookup
+      const eventsById = {}
+      for (const event of events) {
+        const id = Number(event.returnValues.id)
+        eventsById[id] = event
+      }
+
+      // Iterate over statuses to construct proposals
+      proposals = statuses
+        .map((status, index) => {
+          const id = index + 1 // Proposal ID is the index in statuses array plus 1
+          const { state, startTime, endTime, forVotes, againstVotes, proposer, target } = status
+          const event = eventsById[id]
+
+          let title, description, blockNumber
+
+          if (event) {
+            // Event found, parse the description
+            const parsed = parseDescription({ id, text: event.returnValues.description })
+            title = parsed.title
+            description = parsed.description
+            blockNumber = event.blockNumber
+          } else {
+            // Event not found, use placeholder values
+            title = 'Proposal ' + id
+            description =
+              "Corresponding 'ProposalCreated' event not found, please see the target contract for more details"
+            blockNumber = null
+          }
 
           return {
             id,
             title,
             description,
-            target: returnValues.target,
-            proposer: returnValues.proposer,
+            target,
+            proposer,
             endTime: Number(endTime),
             startTime: Number(startTime),
             status: ProposalState[Number(state)],
