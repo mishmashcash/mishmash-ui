@@ -1,7 +1,6 @@
 /* eslint-disable camelcase */
 /* eslint-disable no-console, import/order */
 import Web3 from 'web3'
-
 import networkConfig from '@/networkConfig'
 import { cachedEventsLength, eventsType } from '@/constants'
 
@@ -10,7 +9,7 @@ import InstanceABI from '@/abis/Instance.abi.json'
 import TornadoProxyABI from '@/abis/TornadoProxy.abi.json'
 
 import { ACTION, ACTION_GAS } from '@/constants/variables'
-import { treesInterface, EventsFactory } from '@/services'
+import { treesInterface, EventsFactory, graph } from '@/services'
 
 import {
   randomBN,
@@ -262,20 +261,18 @@ const actions = {
   },
   async updateSelectEvents({ dispatch, commit, state, rootGetters, getters }) {
     const netId = rootGetters['metamask/netId']
+
     const { currency, amount } = state.selectedStatistic
 
     const eventService = getters.eventsInterface.getService({ netId, amount, currency })
 
-    // const graphEvents = await eventService.getEventsFromGraph({ methodName: 'getStatistic' })
+    const graphEvents = await eventService.getEventsFromGraph({ methodName: 'getStatistic' })
 
-    // let statistic = graphEvents?.events
-    let statistic
+    let statistic = graphEvents?.events || []
 
-    if (!statistic || !statistic.length) {
-      const fresh = await eventService.getStatisticsRpc({ eventsCount: 10 })
-      // console.log('fresh', fresh)
-      statistic = fresh || []
-    }
+    const fresh = await eventService.getStatisticsRpc({ eventsCount: 10 })
+    statistic = statistic.concat(fresh || [])
+    statistic = eventService.dedupeEvents(statistic)
 
     const { nextDepositIndex, anonymitySet } = await dispatch('getLastDepositIndex', {
       currency,
@@ -463,7 +460,6 @@ const actions = {
 
       if (hasCache) {
         const [lastEvent] = cachedEvents.sort((a, b) => a.blockNumber - b.blockNumber).slice(-1)
-
         deployedBlock = lastEvent.blockNumber + 1
       }
 
@@ -472,24 +468,17 @@ const actions = {
 
       let events = []
 
-      // const { events: graphEvents, lastSyncBlock } = await graph.getAllEncryptedNotes({
-      //   netId,
-      //   fromBlock: deployedBlock
-      // })
+      const { events: graphEvents, lastSyncBlock } = await graph.getAllEncryptedNotes({
+        netId,
+        fromBlock: deployedBlock
+      })
 
-      // if (lastSyncBlock) {
-      //   deployedBlock = lastSyncBlock
-      // }
+      if (lastSyncBlock) {
+        deployedBlock = lastSyncBlock
+      }
 
       const blockDifference = Math.ceil(currentBlockNumber - deployedBlock)
-      // const divisor = hasCache ? 2 : 10
-
-      // let blockRange = blockDifference > divisor ? blockDifference / divisor : blockDifference
-
-      // if (Number(netId) === 56) {
-      //   blockRange = 3000
-      // }
-      const blockRange = 3000
+      const blockRange = 1000
 
       let numberParts = blockDifference === 0 ? 1 : Math.ceil(blockDifference / blockRange)
       const part = Math.ceil(blockDifference / numberParts)
@@ -525,7 +514,7 @@ const actions = {
           }))
       }
 
-      const allEvents = [].concat(cachedEvents, events)
+      const allEvents = [].concat(cachedEvents, graphEvents, events)
 
       await dispatch('saveEncryptedEventsToDB', { events: allEvents, netId })
 

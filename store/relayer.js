@@ -298,7 +298,6 @@ export const actions = {
     statuses = statuses.filter((status) => status.isValid)
     // const validRelayerENSnames = statuses.map((relayer) => relayer.name)
     commit('SAVE_VALIDATED_RELAYERS', statuses)
-    console.log('filtered statuses ', statuses)
 
     try {
       const {
@@ -310,7 +309,7 @@ export const actions = {
         tornadoServiceFee
       } = pickWeightedRandomRelayer(statuses, netId)
 
-      console.log('Selected relayer', name, tornadoServiceFee)
+      console.log('Relayers - Selected:', name, tornadoServiceFee)
       commit('SET_SELECTED_RELAYER', {
         name,
         address,

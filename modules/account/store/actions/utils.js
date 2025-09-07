@@ -1,4 +1,4 @@
-// import { graph } from '@/services'
+import { graph } from '@/services'
 import networkConfig from '@/networkConfig'
 
 function createMutation({ commit, rootState }, { type, payload }) {
@@ -16,20 +16,20 @@ function clearState({ dispatch }, { key }) {
 
 async function getEventsFromBlockPart({ echoContract, address, currentBlockNumber, netId }) {
   try {
-    // const { events: graphEvents, lastSyncBlock } = await graph.getNoteAccounts({ address, netId })
+    const { events: graphEvents, lastSyncBlock } = await graph.getNoteAccounts({ address, netId })
 
-    // if (graphEvents.length) {
-    //   return graphEvents
-    // }
+    if (graphEvents.length) {
+      return graphEvents
+    }
 
     let { NOTE_ACCOUNT_BLOCK: fromBlock } = networkConfig[`netId${netId}`].constants
-    // if (lastSyncBlock) {
-    //   fromBlock = lastSyncBlock
-    // }
+    if (lastSyncBlock) {
+      fromBlock = lastSyncBlock
+    }
 
     const blockDifference = Math.ceil(currentBlockNumber - fromBlock)
 
-    const blockRange = 4950
+    const blockRange = 1000
 
     let numberParts = blockDifference === 0 ? 1 : Math.ceil(blockDifference / blockRange)
     const part = Math.ceil(blockDifference / numberParts)

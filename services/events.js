@@ -46,6 +46,8 @@ class EventService {
       fromBlock = savedEvents.lastBlock + 1
     }
 
+    const { currentBlockNumber } = await this.getBlocksDiff({ fromBlock })
+
     const newEvents = await this.getEventsFromBlock({
       type,
       fromBlock,
@@ -61,13 +63,15 @@ class EventService {
       return 0
     })
 
-    const lastBlock = allEvents[allEvents.length - 1]?.blockNumber || 0
+    // const lastBlock = allEvents[allEvents.length - 1]?.blockNumber || deployedBlock
+    // this.saveEvents({ events: allEvents, lastBlock, type })
 
-    this.saveEvents({ events: allEvents, lastBlock, type })
+    // getEventsFromBlock updates through latest block, so we store the lastBlock as currentBlockNumber, even though it's not the last eventblock
+    this.saveEvents({ events: allEvents, lastBlock: currentBlockNumber, type })
 
     return {
       events: allEvents,
-      lastBlock
+      lastBlock: currentBlockNumber
     }
   }
   async findEvent({ eventName, eventToFind, type }) {
@@ -173,6 +177,11 @@ class EventService {
   }
 
   async getStatisticsRpc({ eventsCount }) {
+    const { events } = await this.updateEvents(eventsType.DEPOSIT, undefined)
+    return events
+    /*
+
+
     const { deployedBlock } = networkConfig[`netId${this.netId}`]
     const savedEvents = await this.getEvents(eventsType.DEPOSIT)
 
@@ -181,12 +190,14 @@ class EventService {
       return events
     }
 
-    const blockRange = 4950
+    const blockRange = 1000
     const fromBlock = deployedBlock
     const { blockDifference, currentBlockNumber } = await this.getBlocksDiff({ fromBlock })
 
     let numberParts = blockDifference === 0 ? 1 : Math.ceil(blockDifference / blockRange)
     const part = Math.ceil(blockDifference / numberParts)
+
+    console.log(`Statistics - RPC Calls Needed: ${numberParts}`)
 
     let events = []
     let toBlock = currentBlockNumber
@@ -219,6 +230,7 @@ class EventService {
     }
 
     return this.dedupeEvents(events)
+    */
   }
 
   async getEventsFromGraph({ fromBlock, methodName }) {
@@ -249,7 +261,7 @@ class EventService {
 
   async getEventsPartFromRpc({ fromBlock, toBlock, type }) {
     try {
-      const { currentBlockNumber } = await this.getBlocksDiff({ fromBlock })
+      const { currentBlockNumber, blockDifference } = await this.getBlocksDiff({ fromBlock })
 
       if (fromBlock > currentBlockNumber) {
         return {
@@ -258,10 +270,38 @@ class EventService {
         }
       }
 
-      const events = await this.contract.getPastEvents(capitalizeFirstLetter(type), {
-        fromBlock,
-        toBlock
-      })
+      const blockRange = 1000
+      let numberParts = blockDifference === 0 ? 1 : Math.ceil(blockDifference / blockRange)
+      let partSize = Math.ceil(blockDifference / numberParts)
+
+      console.log(`${capitalizeFirstLetter(type)} - RPC Calls Needed: ${numberParts}`)
+
+      let events = []
+      let currentFrom = fromBlock
+
+      for (let i = 0; i < numberParts; i++) {
+        try {
+          const currentTo = Math.min(currentFrom + partSize - 1, currentBlockNumber)
+
+          await sleep(200)
+          const partOfEvents = await this.contract.getPastEvents(capitalizeFirstLetter(type), {
+            fromBlock: currentFrom,
+            toBlock: currentTo
+          })
+
+          if (partOfEvents) {
+            events = events.concat(partOfEvents)
+          }
+
+          currentFrom = currentTo + 1
+          if (currentFrom > currentBlockNumber) break
+        } catch {
+          // On error, increase numberParts and recalculate partSize for remaining
+          numberParts += 1
+          const remainingDifference = currentBlockNumber - currentFrom + 1
+          partSize = Math.ceil(remainingDifference / (numberParts - i))
+        }
+      }
 
       if (!events?.length) {
         return {
@@ -323,16 +363,9 @@ class EventService {
 
   async getEventsFromRpc({ fromBlock, type }) {
     try {
-      let events
-
-      if (Number(this.netId) === 56) {
-        const rpcEvents = await this.getBatchEventsFromRpc({ fromBlock, type })
-        events = rpcEvents?.events || []
-      } else {
-        const rpcEvents = await this.getEventsPartFromRpc({ fromBlock, toBlock: 'latest', type })
-        events = rpcEvents?.events || []
-      }
-      return events
+      console.log(capitalizeFirstLetter(type) + ' - Getting events from RPC, fromBlock:', fromBlock)
+      const rpcEvents = await this.getEventsPartFromRpc({ fromBlock, toBlock: 'latest', type })
+      return rpcEvents?.events || []
     } catch (err) {
       return []
     }
@@ -341,11 +374,11 @@ class EventService {
   async getEventsFromBlock({ fromBlock, graphMethod, type }) {
     try {
       // ToDo think about undefined
-      // const graphEvents = await this.getEventsFromGraph({ fromBlock, methodName: graphMethod })
-      const lastSyncBlock = fromBlock // > graphEvents?.lastBlock ? fromBlock : graphEvents?.lastBlock
+      const graphEvents = await this.getEventsFromGraph({ fromBlock, methodName: graphMethod })
+      const lastSyncBlock = fromBlock > graphEvents?.lastBlock ? fromBlock : graphEvents?.lastBlock
       const rpcEvents = await this.getEventsFromRpc({ fromBlock: lastSyncBlock, type })
 
-      const allEvents = [].concat(/* graphEvents?.events || */ [], rpcEvents || [])
+      const allEvents = [].concat(graphEvents?.events || [], rpcEvents || [])
       if (allEvents.length) {
         return {
           events: allEvents,

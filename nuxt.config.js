@@ -191,7 +191,8 @@ export default {
           OLD_STORE_NAME: process.env.OLD_STORE_NAME,
           STORE_NAME: process.env.STORE_NAME,
           IPFS_APP_HASH: process.env.IPFS_APP_HASH,
-          DB_VERSION: process.env.DB_VERSION
+          DB_VERSION: process.env.DB_VERSION,
+          GRAPHQL_HOST: process.env.GRAPHQL_HOST
         })
       })
     ],

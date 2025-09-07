@@ -1,7 +1,6 @@
 import { ApolloClient, InMemoryCache, gql } from '@apollo/client/core'
 
 import {
-  _META,
   GET_DEPOSITS,
   GET_STATISTIC,
   GET_REGISTERED,
@@ -20,14 +19,8 @@ const link = ({ getContext }) => {
 }
 
 const CHAIN_GRAPH_URLS = {
-  1: 'https://api.thegraph.com/subgraphs/name/tornadocash/mainnet-tornado-subgraph',
-  5: 'https://api.thegraph.com/subgraphs/name/tornadocash/goerli-tornado-subgraph',
-  10: 'https://api.thegraph.com/subgraphs/name/tornadocash/optimism-tornado-subgraph',
-  56: 'https://api.thegraph.com/subgraphs/name/tornadocash/bsc-tornado-subgraph',
-  100: 'https://api.thegraph.com/subgraphs/name/tornadocash/xdai-tornado-subgraph',
-  137: 'https://api.thegraph.com/subgraphs/name/tornadocash/matic-tornado-subgraph',
-  42161: 'https://api.thegraph.com/subgraphs/name/tornadocash/arbitrum-tornado-subgraph',
-  43114: 'https://api.thegraph.com/subgraphs/name/tornadocash/avalanche-tornado-subgraph'
+  52014: process.env.GRAPHQL_HOST + '/graphql/mainnet',
+  5201420: process.env.GRAPHQL_HOST + '/graphql/testnet'
 }
 
 const defaultOptions = {
@@ -43,12 +36,6 @@ const client = new ApolloClient({
   defaultOptions
 })
 
-const registryClient = new ApolloClient({
-  uri: 'https://api.thegraph.com/subgraphs/name/tornadocash/tornado-relayer-registry',
-  cache: new InMemoryCache(),
-  defaultOptions
-})
-
 async function getStatistic({ currency, amount, netId }) {
   try {
     const { data } = await client.query({
@@ -59,22 +46,21 @@ async function getStatistic({ currency, amount, netId }) {
       variables: {
         currency,
         first: 10,
-        orderBy: 'index',
-        orderDirection: 'desc',
         amount: String(amount)
       }
     })
 
     if (!data) {
+      console.log('No statistic data from graph')
       return {
         lastSyncBlock: '',
         events: []
       }
     }
 
-    const { deposits } = data
+    const { deposits, _meta } = data
 
-    const lastSyncBlock = await getMeta({ netId })
+    const lastSyncBlock = _meta.block.number
 
     const events = deposits
       .map((e) => ({
@@ -98,15 +84,23 @@ async function getStatistic({ currency, amount, netId }) {
   }
 }
 
-async function getAllRegisters(fromBlock) {
+async function getAllRegisters(fromBlock, netId) {
   try {
-    const relayers = await getRegisters(fromBlock)
+    const { data } = await client.query({
+      context: {
+        chainId: netId
+      },
+      query: gql(GET_REGISTERED),
+      variables: { first, fromBlock }
+    })
+
+    const relayers = data?.relayers
 
     if (!relayers) {
       return { lastSyncBlock: '', events: [] }
     }
 
-    const lastSyncBlock = await getRegisteredMeta()
+    const lastSyncBlock = data._meta.block.number
 
     return { lastSyncBlock, events: relayers }
   } catch {
@@ -117,8 +111,18 @@ async function getAllDeposits({ currency, amount, fromBlock, netId }) {
   try {
     let deposits = []
 
+    let lastSyncBlock
     while (true) {
-      let result = await getDeposits({ currency, amount, fromBlock, netId })
+      const { data } = await client.query({
+        context: {
+          chainId: netId
+        },
+        query: gql(GET_DEPOSITS),
+        variables: { currency, amount: String(amount), first, fromBlock }
+      })
+
+      let result = data?.deposits || []
+      lastSyncBlock = data?._meta?.block?.number
 
       if (isEmptyArray(result)) {
         break
@@ -144,8 +148,6 @@ async function getAllDeposits({ currency, amount, fromBlock, netId }) {
       }
     }
 
-    const lastSyncBlock = await getMeta({ netId })
-
     const data = deposits.map((e) => ({
       timestamp: e.timestamp,
       commitment: e.commitment,
@@ -168,82 +170,22 @@ async function getAllDeposits({ currency, amount, fromBlock, netId }) {
   }
 }
 
-async function getMeta({ netId }) {
-  try {
-    const { data } = await client.query({
-      context: {
-        chainId: netId
-      },
-      query: gql(_META)
-    })
-
-    if (!data) {
-      return undefined
-    }
-
-    return data._meta.block.number
-  } catch {
-    return undefined
-  }
-}
-
-async function getRegisteredMeta() {
-  try {
-    const { data } = await registryClient.query({
-      context: {
-        chainId: 1
-      },
-      query: gql(_META)
-    })
-
-    if (!data) {
-      return undefined
-    }
-
-    return data._meta.block.number
-  } catch {
-    return undefined
-  }
-}
-
-async function getRegisters(fromBlock) {
-  const { data } = await registryClient.query({
-    context: {
-      chainId: 1
-    },
-    query: gql(GET_REGISTERED),
-    variables: { first, fromBlock }
-  })
-
-  if (!data) {
-    return []
-  }
-
-  return data.relayers
-}
-
-async function getDeposits({ currency, amount, fromBlock, netId }) {
-  const { data } = await client.query({
-    context: {
-      chainId: netId
-    },
-    query: gql(GET_DEPOSITS),
-    variables: { currency, amount: String(amount), first, fromBlock }
-  })
-
-  if (!data) {
-    return []
-  }
-
-  return data.deposits
-}
-
 async function getAllWithdrawals({ currency, amount, fromBlock, netId }) {
   try {
     let withdrawals = []
+    let lastSyncBlock
 
     while (true) {
-      let result = await getWithdrawals({ currency, amount, fromBlock, netId })
+      const { data } = await client.query({
+        context: {
+          chainId: netId
+        },
+        query: gql(GET_WITHDRAWALS),
+        variables: { currency, amount: String(amount), fromBlock, first }
+      })
+
+      let result = data?.withdrawals || []
+      lastSyncBlock = data?._meta?.block?.number
 
       if (isEmptyArray(result)) {
         break
@@ -269,8 +211,6 @@ async function getAllWithdrawals({ currency, amount, fromBlock, netId }) {
       }
     }
 
-    const lastSyncBlock = await getMeta({ netId })
-
     const data = withdrawals.map((e) => ({
       to: e.to,
       fee: e.fee,
@@ -294,22 +234,6 @@ async function getAllWithdrawals({ currency, amount, fromBlock, netId }) {
   }
 }
 
-async function getWithdrawals({ currency, amount, fromBlock, netId }) {
-  const { data } = await client.query({
-    context: {
-      chainId: netId
-    },
-    query: gql(GET_WITHDRAWALS),
-    variables: { currency, amount: String(amount), fromBlock, first }
-  })
-
-  if (!data) {
-    return []
-  }
-
-  return data.withdrawals
-}
-
 async function getNoteAccounts({ address, netId }) {
   try {
     const { data } = await client.query({
@@ -327,10 +251,8 @@ async function getNoteAccounts({ address, netId }) {
       }
     }
 
-    const lastSyncBlock = await getMeta({ netId })
-
     return {
-      lastSyncBlock,
+      lastSyncBlock: data._meta.block.number,
       events: data.noteAccounts
     }
   } catch {
@@ -344,9 +266,19 @@ async function getNoteAccounts({ address, netId }) {
 async function getAllEncryptedNotes({ fromBlock, netId }) {
   try {
     let encryptedNotes = []
+    let lastSyncBlock
 
     while (true) {
-      let result = await getEncryptedNotes({ fromBlock, netId })
+      const { data } = await client.query({
+        context: {
+          chainId: netId
+        },
+        query: gql(GET_ENCRYPTED_NOTES),
+        variables: { fromBlock, first }
+      })
+
+      let result = data?.encryptedNotes || []
+      lastSyncBlock = data?._meta?.block?.number
 
       if (isEmptyArray(result)) {
         break
@@ -376,8 +308,6 @@ async function getAllEncryptedNotes({ fromBlock, netId }) {
       }
     }
 
-    const lastSyncBlock = await getMeta({ netId })
-
     const data = encryptedNotes.map((e) => ({
       txHash: e.transactionHash,
       encryptedNote: e.encryptedNote,
@@ -399,27 +329,9 @@ async function getAllEncryptedNotes({ fromBlock, netId }) {
   }
 }
 
-async function getEncryptedNotes({ fromBlock, netId }) {
-  const { data } = await client.query({
-    context: {
-      chainId: netId
-    },
-    query: gql(GET_ENCRYPTED_NOTES),
-    variables: { fromBlock, first }
-  })
-
-  if (!data) {
-    return []
-  }
-
-  return data.encryptedNotes
-}
-
 export default {
-  getDeposits,
   getStatistic,
   getAllDeposits,
-  getWithdrawals,
   getNoteAccounts,
   getAllRegisters,
   getAllWithdrawals,

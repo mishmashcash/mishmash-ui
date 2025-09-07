@@ -36,10 +36,10 @@ export default {
     tokens: {
       etn: {
         instanceAddress: {
-          '1000': '0x7f7679bEb2bEeb15328241415DC66D96FAE52195',
-          '10000': '0xF174B117BbE4cf274eD467B21C41Ad56c3744A0a',
-          '100000': '0xf344F3DA57BdE1378BD096476E80bf048d026F89',
-          '1000000': '0xB9BEbCeADdbed820EC663f83674D21A3Fc1e12dB'
+          '1000': '0xcc69fdD4c06f1a580BfE219a3a369Db41AB617cB',
+          '10000': '0x2727F56ab6d0c23dbd4b26bD5B4749cc35251141',
+          '100000': '0x7bBfc6F25138F7903B414eD31A12eD2F78107aeD',
+          '1000000': '0x6166CdEDd16cb1D31F4f4f8Da05Ab534D3e667Da'
         },
         symbol: 'ETN',
         decimals: 18
@@ -93,10 +93,10 @@ export default {
     tokens: {
       etn: {
         instanceAddress: {
-          '1': '0x2EE12a26A0b291a19EF811a48E076503e088208a',
-          '10': '0xb3b770b5d6dC9F471a3B403FE3EAb9c34496AF2C',
-          '100': '0xb8b811c0b136BfdFEfA975483C5d6aDDDfF7cc42',
-          '0.1': '0x15d7781438DeFcc74a46D3Ed330382E6A91cFe19'
+          '1': '0xb077305b36B0AA0ae04d6F16FE5d2792b84A8C99',
+          '10': '0xb077305b36B0AA0ae04d6F16FE5d2792b84A8C99',
+          '100': '0x9a0f9230254Dfd962825353A91aAEa4b794f6295',
+          '0.1': '0x928ebD78DE9a163A11AC245Bc94e5Ed4a393AC72'
         },
         symbol: 'ETN',
         decimals: 18

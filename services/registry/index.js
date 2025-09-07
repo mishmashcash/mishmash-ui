@@ -1,8 +1,6 @@
-// import namehash from 'eth-ens-namehash'
 import { BigNumber as BN } from 'bignumber.js'
-// import { toChecksumAddress } from 'web3-utils'
 
-// import { graph } from '@/services'
+import { graph } from '@/services'
 import networkConfig from '@/networkConfig'
 
 import AggregatorABI from '@/abis/Aggregator.abi.json'
@@ -107,21 +105,48 @@ class RelayerRegister {
     let { blockFrom, blockTo, cachedEvents } = await this.getCachedData()
     let allRelayers = cachedEvents
 
+    // console.log('FetchRelayers - DB Cached relayers', allRelayers)
+
     if (blockFrom !== blockTo) {
-      const multicallEvents = await this.fetchEvents(blockFrom, blockTo)
+      const graphRelayersEvents = await graph.getAllRegisters(blockFrom, this.netId)
 
-      // console.log('relayerRegisteredEvents', multicallEvents)
+      // console.log('FetchRelayers - From GraphQL', graphRelayersEvents)
 
-      const relayerRegisteredEvents = multicallEvents.map(({ returnValues }) => ({
-        hostName: returnValues.hostName,
-        relayerAddress: returnValues.relayerAddress,
-        stakedAmount: returnValues.stakedAmount,
-        chainId: this.netId
-      }))
+      let relayers = {
+        lastSyncBlock: graphRelayersEvents.lastSyncBlock,
+        events: graphRelayersEvents.events.map((el) => ({
+          hostName: el.ensName,
+          relayerAddress: el.address,
+          stakedAmount: el.stakedAmount,
+          chainId: this.netId
+        }))
+      }
+
+      const isGraphLate = relayers.lastSyncBlock && blockTo > Number(relayers.lastSyncBlock)
+
+      if (isGraphLate) {
+        // console.log('FetchRelayers - Graph Is Late', isGraphLate, relayers.lastSyncBlock, blockTo)
+        blockFrom = relayers.lastSyncBlock
+      }
+
+      if (!relayers.events.length || isGraphLate) {
+        const multicallEvents = await this.fetchEvents(blockFrom, blockTo)
+        const eventsRelayers = multicallEvents.map(({ returnValues }) => ({
+          hostName: returnValues.hostName,
+          relayerAddress: returnValues.relayerAddress,
+          stakedAmount: returnValues.stakedAmount,
+          chainId: this.netId
+        }))
+
+        relayers = {
+          lastSyncBlock: blockTo,
+          events: relayers.events.concat(eventsRelayers)
+        }
+      }
 
       const newRelayers = {
         lastSyncBlock: blockTo,
-        events: relayerRegisteredEvents
+        events: relayers.events
       }
 
       await this.saveEvents({ storeName: 'register_events', ...newRelayers })
@@ -163,6 +188,8 @@ class RelayerRegister {
     const relayerAddresses = chainFilteredRelayers.map((r) => r.relayerAddress)
 
     const relayersData = await this.aggregator.methods.relayersData(relayerAddresses).call()
+
+    console.log('Relayers - Statuses:', relayersData)
 
     const validRelayers = relayersData.reduce(
       (acc, curr, index) => this.filterRelayer(acc, curr, chainFilteredRelayers[index]),
