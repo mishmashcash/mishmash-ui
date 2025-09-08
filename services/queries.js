@@ -94,3 +94,12 @@ export const GET_ENCRYPTED_NOTES = `
     }
   }
 `
+
+export const GET_DELEGATORS = `
+  query getActiveDelegators($address: String!) {
+    activeDelegators(where: { address: $address }) {
+      delegator
+      transactionHash
+    }
+  }
+`

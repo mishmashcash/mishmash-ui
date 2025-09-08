@@ -6,7 +6,8 @@ import {
   GET_REGISTERED,
   GET_WITHDRAWALS,
   GET_NOTE_ACCOUNTS,
-  GET_ENCRYPTED_NOTES
+  GET_ENCRYPTED_NOTES,
+  GET_DELEGATORS
 } from './queries'
 
 const isEmptyArray = (arr) => !Array.isArray(arr) || !arr.length
@@ -329,11 +330,41 @@ async function getAllEncryptedNotes({ fromBlock, netId }) {
   }
 }
 
+async function getActiveDelegators({ address, netId }) {
+  try {
+    const { data } = await client.query({
+      context: {
+        chainId: netId
+      },
+      query: gql(GET_DELEGATORS),
+      variables: { address }
+    })
+
+    if (!data) {
+      return {
+        success: false,
+        delegators: []
+      }
+    }
+
+    return {
+      success: true,
+      delegators: data.activeDelegators.map((e) => e.delegator)
+    }
+  } catch {
+    return {
+      success: false,
+      delegators: []
+    }
+  }
+}
+
 export default {
   getStatistic,
   getAllDeposits,
   getNoteAccounts,
   getAllRegisters,
   getAllWithdrawals,
-  getAllEncryptedNotes
+  getAllEncryptedNotes,
+  getActiveDelegators
 }

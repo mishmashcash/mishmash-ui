@@ -6,6 +6,7 @@ import { utils } from 'ethers'
 import { ToastProgrammatic as Toast } from 'buefy'
 
 import networkConfig from '@/networkConfig'
+import { graph } from '@/services'
 
 import GovernanceABI from '@/abis/Governance.abi.json'
 import AggregatorABI from '@/abis/Aggregator.abi.json'
@@ -881,34 +882,46 @@ const actions = {
       }
 
       const netId = rootGetters['metamask/netId']
+      const { success: graphSuccess, delegators: graphDelegators } = await graph.getActiveDelegators({
+        netId,
+        address: ethAccount
+      })
+
       const config = getters.getConfig({ netId })
 
       const aggregatorContract = getters.aggregatorContract
       const govInstance = getters.govContract({ netId })
-      let delegatedAccs = await govInstance.getPastEvents('Delegated', {
-        filter: {
-          to: ethAccount
-        },
-        fromBlock: config.constants.GOVERNANCE_BLOCK,
-        toBlock: 'latest'
-      })
-      let undelegatedAccs = await govInstance.getPastEvents('Undelegated', {
-        filter: {
-          from: ethAccount
-        },
-        fromBlock: config.constants.GOVERNANCE_BLOCK,
-        toBlock: 'latest'
-      })
-      delegatedAccs = delegatedAccs.map((acc) => acc.returnValues.account)
-      undelegatedAccs = undelegatedAccs.map((acc) => acc.returnValues.account)
-      const uniq = delegatedAccs.filter((obj, index, self) => {
-        const indexUndelegated = undelegatedAccs.indexOf(obj)
-        if (indexUndelegated !== -1) {
-          undelegatedAccs.splice(indexUndelegated, 1)
-          return false
-        }
-        return true
-      })
+      let uniq = []
+
+      if (!graphSuccess) {
+        let delegatedAccs = await govInstance.getPastEvents('Delegated', {
+          filter: {
+            to: ethAccount
+          },
+          fromBlock: config.constants.GOVERNANCE_BLOCK,
+          toBlock: 'latest'
+        })
+        let undelegatedAccs = await govInstance.getPastEvents('Undelegated', {
+          filter: {
+            from: ethAccount
+          },
+          fromBlock: config.constants.GOVERNANCE_BLOCK,
+          toBlock: 'latest'
+        })
+        delegatedAccs = delegatedAccs.map((acc) => acc.returnValues.account)
+        undelegatedAccs = undelegatedAccs.map((acc) => acc.returnValues.account)
+        uniq = delegatedAccs.filter((obj, index, self) => {
+          const indexUndelegated = undelegatedAccs.indexOf(obj)
+          if (indexUndelegated !== -1) {
+            undelegatedAccs.splice(indexUndelegated, 1)
+            return false
+          }
+          return true
+        })
+      } else {
+        uniq = graphDelegators
+      }
+
       let balances = await aggregatorContract.methods.getGovernanceBalances(govInstance._address, uniq).call()
       balances = balances.reduce((acc, balance, i) => {
         acc = acc.add(toBN(balance))
